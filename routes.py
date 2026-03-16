@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify, Response
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
-from models import db, Usuario
+from models import db, Usuario, Producto
 
 api_bp = Blueprint('api', __name__)
 
@@ -53,15 +53,26 @@ def login() -> tuple[Response, int]:
 
     return jsonify({"error": "Credenciales inválidas"}), 401
 
-@api_bp.route('/inventario/critico', methods=['POST'])
+@api_bp.route('/productos', methods=['POST'])
 @jwt_required()
-def modificar_inventario() -> tuple[Response, int]:
+def crear_producto() -> tuple[Response, int]:
+
     usuario_actual = get_jwt_identity()
 
     if usuario_actual.get("rol") != "Admin":
         return jsonify({"error": "Forbidden: Requiere privilegios de Administrador"}), 403
 
+    payload = request.get_json()
+
+    nuevo_producto = Producto(
+        nombre=payload["nombre"],
+        precio=payload["precio"]
+    )
+
+    db.session.add(nuevo_producto)
+    db.session.commit()
+
     return jsonify({
-        "mensaje": "Acceso concedido al servidor.",
-        "operador": usuario_actual["username"]
-    }), 200
+        "mensaje": "Producto creado",
+        "producto": nuevo_producto.serializar()
+    }), 201
